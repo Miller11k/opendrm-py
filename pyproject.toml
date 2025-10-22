@@ -1,0 +1,19 @@
+[project]
+name = "build-your-own-drm"
+version = "0.1.0"
+description = "Educational DRM emulator stack"
+requires-python = ">=3.10"
+dependencies = [
+  "typer>=0.12",
+  "cryptography>=43.0",
+  "pydantic>=2.7",
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.30",
+  "Pillow>=10.4",
+  "opencv-python>=4.10",
+  "pytest>=8.3",
+]
+[project.scripts]
+drm = "drm.cli:main"
+[tool.pytest.ini_options]
+testpaths = ["tests"]

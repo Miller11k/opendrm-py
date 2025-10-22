@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "License",
+  "type": "object",
+  "properties": {
+    "license_id": {"type": "string"},
+    "issued_at": {"type": "string", "format": "date-time"},
+    "expires_at": {"type": "string", "format": "date-time"},
+    "content_id": {"type": "string"},
+    "keys": {"type": "object"}
+  },
+  "required": ["license_id", "issued_at", "content_id", "keys"],
+  "additionalProperties": true
+}
