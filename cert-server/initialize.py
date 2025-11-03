@@ -111,35 +111,47 @@ def initialize_cert_server(
     ]:
         _ensure_dir(base / p)
     
+    # Set default openssl config file
+    openssl_cnf = f"""# Minimal OpenSSL config for {org}
+    [ ca ]
+    default_ca = CA_default
 
-        # Set default openssl config file
-        openssl_cnf = f"""# Minimal OpenSSL config for {org}
-        [ ca ]
-        default_ca = CA_default
+    [ CA_default ]
+    dir               = .
+    database          = ./index.txt
+    new_certs_dir     = ./newcerts
+    certificate       = ./certs/ca.crt
+    serial            = ./serial
+    private_key       = ./private/ca.key
+    default_md        = sha256
+    policy            = policy_any
+    x509_extensions   = usr_cert
+    default_days      = 397
 
-        [ CA_default ]
-        dir               = .
-        database          = ./index.txt
-        new_certs_dir     = ./newcerts
-        certificate       = ./certs/ca.crt
-        serial            = ./serial
-        private_key       = ./private/ca.key
-        default_md        = sha256
-        policy            = policy_any
-        x509_extensions   = usr_cert
-        default_days      = 397
+    [ policy_any ]
+    commonName              = supplied
 
-        [ policy_any ]
-        commonName              = supplied
+    [ usr_cert ]
+    basicConstraints=CA:FALSE
+    keyUsage=digitalSignature,keyEncipherment
+    extendedKeyUsage=serverAuth,clientAuth
 
-        [ usr_cert ]
-        basicConstraints=CA:FALSE
-        keyUsage=digitalSignature,keyEncipherment
-        extendedKeyUsage=serverAuth,clientAuth
+    """
+    _write(base / "config" / "openssl.cnf", openssl_cnf) # Write the config file
 
-        """
+    # Set the default policy yaml
+    policy_yml = """# issuance profiles
+    profiles:
+    server:
+        eku: [serverAuth]
+        days: 397
+    client:
+        eku: [clientAuth]
+        days: 397
+    """
+    _write(base / "config" / "policy.yml", policy_yml)  # Write the default policy yaml
 
-        _write(base / "config" / "openssl.cnf", openssl_cnf) # Write the config file
+    
 
 
 def main():
