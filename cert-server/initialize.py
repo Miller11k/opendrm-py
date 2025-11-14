@@ -272,7 +272,7 @@ def _sign_leaf(
         .subject_name(subject)                               # Set subject DN for this leaf
         .issuer_name(issuer_cert.subject)                    # Link to issuing CA's subject
         .public_key(key.public_key())                        # Embed leaf public key
-        .serial_number(_new_serial())                        # Unique serial (your helper uses epoch seconds)
+        .serial_number(_new_serial())                        # Unique serial (helper uses epoch seconds)
         .not_valid_before(now - timedelta(days=1))           # Allow small clock skew
         .not_valid_after(now + timedelta(days=days))         # Set validity window
         .add_extension(
