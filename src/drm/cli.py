@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import typer
 
-from .encryption import cipher
+from .encryption import cipher, ca_keywrap
 from .utils import media_io
 
 app = typer.Typer()
@@ -66,7 +66,73 @@ def decrypt_media(
     typer.echo(f"Decrypting file: {input_path} -> {out_path}")
     metadata = cipher.decrypt_stream(str(input_path), str(out_path), key)
     typer.echo(f"Decryption complete. Metadata: {metadata}")
-    typer.echo("Decryption complete.")
+
+
+@app.command("encrypt-media-for-license")
+def encrypt_media_for_license(
+    input: str = typer.Argument(..., help="Path to input media file"),
+    certificate: str = typer.Argument(..., help="Path to license certificate (PEM)"),
+    output: str = typer.Option("", "-o", "--output", help="Path to write encrypted file"),
+):
+    """Encrypt a media file for a specific certificate holder (license).
+
+    The symmetric key is wrapped with the certificate's public key.
+    Only the holder of the matching private key can decrypt.
+    """
+    input_path = Path(input)
+    if not input_path.exists():
+        raise typer.BadParameter(f"Input file not found: {input}")
+
+    cert_path = Path(certificate)
+    if not cert_path.exists():
+        raise typer.BadParameter(f"Certificate not found: {certificate}")
+
+    out_path = Path(output) if output else input_path.with_suffix(input_path.suffix + ".opdrm")
+
+    media_kind = media_io.detect_media_kind(str(input_path))
+    metadata = {"content_type": media_kind, "filename": input_path.name}
+
+    typer.echo(f"Encrypting {media_kind} for license: {input_path} -> {out_path}")
+    ca_keywrap.encrypt_media_for_license(
+        str(input_path), str(out_path), str(cert_path), metadata=metadata
+    )
+    typer.echo(f"Encryption complete. Key wrapped for certificate: {certificate}")
+    typer.echo(f"Wrapped key saved to: {out_path}.keyfile")
+
+
+@app.command("decrypt-media-with-license")
+def decrypt_media_with_license(
+    encrypted: str = typer.Argument(..., help="Path to encrypted media file"),
+    keyfile: str = typer.Argument(..., help="Path to wrapped key file (.keyfile)"),
+    private_key: str = typer.Argument(..., help="Path to license private key (PEM)"),
+    output: str = typer.Option("", "-o", "--output", help="Path to write decrypted file"),
+    password: str = typer.Option("", "-p", "--password", help="Password for encrypted private key"),
+):
+    """Decrypt a media file using a CA-issued license certificate.
+
+    The wrapped key is unwrapped using the private key, then media is decrypted.
+    """
+    encrypted_path = Path(encrypted)
+    if not encrypted_path.exists():
+        raise typer.BadParameter(f"Encrypted file not found: {encrypted}")
+
+    keyfile_path = Path(keyfile)
+    if not keyfile_path.exists():
+        raise typer.BadParameter(f"Key file not found: {keyfile}")
+
+    key_path = Path(private_key)
+    if not key_path.exists():
+        raise typer.BadParameter(f"Private key not found: {private_key}")
+
+    out_path = Path(output) if output else encrypted_path.with_suffix(".dec")
+
+    pwd = password.encode("utf-8") if password else None
+
+    typer.echo(f"Decrypting file: {encrypted_path} -> {out_path}")
+    metadata = ca_keywrap.decrypt_media_with_license(
+        str(encrypted_path), str(keyfile_path), str(out_path), str(key_path), password=pwd
+    )
+    typer.echo(f"Decryption complete. Metadata: {metadata}")
 
 
 def main() -> None:
