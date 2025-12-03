@@ -193,7 +193,7 @@ def _sign_intermediate(root_key, root_cert, common_name: str, days: int = 1825):
         - CRL nextUpdate is set to 14 days by default.
     """
     key = rsa.generate_private_key(public_exponent=65537, key_size=4096)  # Generate the Intermediate CA RSA private key
-    now = datetime.utcnow()  # Set the current UTC time
+    now = datetime.now(timezone.utc)  # Set the current UTC time
     subject = _cert_name(common_name)  # Define the subject for the Intermediate CA certificate
     
     # Create certificate builder signed by the Root CA
@@ -264,7 +264,7 @@ def _sign_leaf(
         (key, cert): Tuple containing the generated RSA private key and the signed X.509 certificate.
     """
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)  # Generate server/client RSA key (2048-bit)
-    now = datetime.utcnow()  # Use UTC "now" for validity bounds
+    now = datetime.now(timezone.utc)  # Use UTC "now" for validity bounds
     subject = _cert_name(common_name)  # Build subject DN (C, O, CN) using helper
 
     # Build end-entity certificate (not a CA)
@@ -495,7 +495,8 @@ def initialize_cert_server(
 
     # Initialize CT log database schema
     ct_db_path = base / "ctlog" / "log.db"
-    with sqlite3.connect(ct_db_path) as conn:
+    conn = sqlite3.connect(str(ct_db_path))
+    try:
         cur = conn.cursor()
         # Table storing individual log entries (leaf_hash + cert chain)
         cur.execute("""
@@ -516,10 +517,13 @@ def initialize_cert_server(
             )
         """)
         conn.commit()
+    finally:
+        conn.close()
 
     # ------------------- Service Databases -------------------
     # Registry DB for issued certificates and revocation state
-    with sqlite3.connect(base / "db" / "registry.sqlite") as conn:
+    conn = sqlite3.connect(str(base / "db" / "registry.sqlite"))
+    try:
         c = conn.cursor()
         # Track issued cert metadata — supports management and revocation later
         c.execute("""
@@ -551,9 +555,12 @@ def initialize_cert_server(
             )
         """)
         conn.commit()
+    finally:
+        conn.close()
 
     # Audit log for operational security — tracks issuance + CA actions
-    with sqlite3.connect(base / "db" / "audit.sqlite") as conn:
+    conn = sqlite3.connect(str(base / "db" / "audit.sqlite"))
+    try:
         c = conn.cursor()
         c.execute("""
             CREATE TABLE IF NOT EXISTS audit(
@@ -566,6 +573,8 @@ def initialize_cert_server(
             )
         """)
         conn.commit()
+    finally:
+        conn.close()
 
     # ------------------- Placeholder Files -------------------
     # Ensure required directories remain under version control when empty

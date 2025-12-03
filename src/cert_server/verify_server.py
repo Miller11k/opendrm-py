@@ -439,7 +439,7 @@ def verify_root_crl(path: Path, root_cert_path: Path) -> bool:
     issuer = _load_pem_cert(root_cert_path) # Grab the issuer
     _assert(crl.issuer == issuer.subject, "Root CRL issuer must match root subject")
     # Signature is checked indirectly by load; we can also ensure sane nextUpdate > lastUpdate
-    _assert(crl.next_update > crl.last_update, "Root CRL nextUpdate must be after lastUpdate")
+    _assert(crl.next_update_utc > crl.last_update_utc, "Root CRL nextUpdate must be after lastUpdate")
     return True
 
 def verify_root_index_txt(path: Path) -> bool:
@@ -580,7 +580,7 @@ def verify_intermediate_crl(path: Path, intermediate_cert_path: Path) -> bool:
     crl = _load_pem_crl(path)   # Load in the CRL
     icert = _load_pem_cert(intermediate_cert_path)  # Load in the intermediate certificate
     _assert(crl.issuer == icert.subject, "Intermediate CRL issuer must match intermediate subject")
-    _assert(crl.next_update > crl.last_update, "Intermediate CRL nextUpdate must be after lastUpdate")
+    _assert(crl.next_update_utc > crl.last_update_utc, "Intermediate CRL nextUpdate must be after lastUpdate")
     return True
 
 def verify_intermediate_index_txt(path: Path) -> bool:
@@ -775,7 +775,8 @@ def verify_ctlog_db(path: Path) -> bool:
     """
     if not path.is_file():  # Ensure file exists
         raise ValueError(f"Missing CT log DB: {path}")
-    with sqlite3.connect(path) as conn: # Open SQLite file
+    conn = sqlite3.connect(str(path))
+    try:
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
         names = {r[0] for r in cur.fetchall()}
@@ -788,6 +789,8 @@ def verify_ctlog_db(path: Path) -> bool:
                 "CT entries schema mismatch")
         _assert(cols("sth") == ["id", "tree_size", "sha256_root", "ts"],
                 "CT sth schema mismatch")
+    finally:
+        conn.close()
     return True
 
 
@@ -815,7 +818,8 @@ def verify_registry_db(path: Path) -> bool:
     """
     if not path.is_file():  # Ensure file exists
         raise ValueError(f"Missing registry DB: {path}")
-    with sqlite3.connect(path) as conn: # Connect to database
+    conn = sqlite3.connect(str(path))
+    try:
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
         names = {r[0] for r in cur.fetchall()}
@@ -828,6 +832,8 @@ def verify_registry_db(path: Path) -> bool:
                 "certificates table schema mismatch")
         _assert(cols("csrs") == ["id","csr_pem","submitted_at"], "csrs table schema mismatch")
         _assert(cols("revocations") == ["serial","reason","revoked_at"], "revocations table schema mismatch")
+    finally:
+        conn.close()
     return True
 
 def verify_audit_db(path: Path) -> bool:
@@ -850,7 +856,8 @@ def verify_audit_db(path: Path) -> bool:
     """
     if not path.is_file():  # Ensure file exists
         raise ValueError(f"Missing audit DB: {path}")
-    with sqlite3.connect(path) as conn: # Connect to database
+    conn = sqlite3.connect(str(path))
+    try:
         cur = conn.cursor()
         cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
         names = {r[0] for r in cur.fetchall()}
@@ -858,6 +865,8 @@ def verify_audit_db(path: Path) -> bool:
         cur.execute("PRAGMA table_info(audit)")
         cols = [r[1] for r in cur.fetchall()]
         _assert(cols == ["id","ts","actor","action","resource","details"], "audit table schema mismatch")
+    finally:
+        conn.close()
     return True
 
 
