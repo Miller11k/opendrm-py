@@ -209,3 +209,7 @@ __marimo__/
 
 # Template Cert Server
 sample-cert-server/*
+
+
+# MacOS Files
+**/.DS_Store
