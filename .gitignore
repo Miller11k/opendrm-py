@@ -212,4 +212,5 @@ sample-cert-server/*
 
 
 # MacOS Files
+.DS_Store
 **/.DS_Store
