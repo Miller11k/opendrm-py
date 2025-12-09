@@ -109,24 +109,59 @@ opendrm-py/
 
 ## Getting Started
 
+### Installation
 ```bash
 pip install -e .
 ```
 
-### Initialize CA
+### View System Status
 ```bash
-python -m drm.main init-ca
+python -m drm.cli show-status
 ```
 
-### Encrypt media
+### Initialize Certificate Authority (One-time Setup)
 ```bash
-python -m drm.main encrypt --input sample.mp4 --output sample.mp4.opdrm
+# Create a new CA infrastructure in a directory
+python -m drm.cli init-ca /path/to/ca \
+  --root-cn "My Root CA" \
+  --intermediate-cn "My Issuing CA" \
+  --org "My Organization"
+
+# Verify CA integrity
+python -m drm.cli verify-ca /path/to/ca
 ```
 
-### Issue a license
+### Encrypt Media (Without License)
 ```bash
-bash examples/example_workflows/issue_license.sh
+# Simple symmetric encryption (no CA required)
+python -m drm.cli encrypt-media --input movie.mp4 --output movie.mp4.opdrm --keyfile media.key
+
+# Decrypt with symmetric key
+python -m drm.cli decrypt-media --input movie.mp4.opdrm --output movie.mp4 --keyfile media.key
 ```
+
+### Encrypt Media for License (With CA)
+```bash
+# Encrypt media for a specific certificate holder
+python -m drm.cli encrypt-media-for-license \
+  --input movie.mp4 \
+  --certificate user_license.pem \
+  --output movie.mp4.opdrm
+
+# Decrypt using license certificate + private key
+python -m drm.cli decrypt-media-with-license \
+  --encrypted movie.mp4.opdrm \
+  --keyfile movie.mp4.opdrm.keyfile \
+  --private-key user_key.pem \
+  --output movie.mp4
+```
+
+### Complete Workflow Example
+See `examples/example_workflows/ca_drm_example.py` for a complete end-to-end workflow demonstrating:
+1. CA initialization
+2. Certificate issuance
+3. License-based media encryption
+4. Client-side decryption
 
 ---
 
